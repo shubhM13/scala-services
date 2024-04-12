@@ -1,0 +1,73 @@
+image:
+  name: hashicorp/terraform:1.0.4
+  entrypoint: [""]
+before_script:
+  - chmod +x runner_setup.sh
+  - sh runner_setup.sh
+
+stages:
+  - plan
+  - deploy
+  - plan_destroy
+  - destroy
+
+plan1_sandbox:
+  stage: plan
+  script:
+    - export VAULT_ADDR=https://vault.us-east-1.management.directsupply-sandbox.cloud
+    - vault login -method=aws role=deployment-bastion-read-east
+    - export DATABRICKS_HOST="$(vault kv get -field=host secrets/databricks/sandbox)"
+    - export DATABRICKS_TOKEN="$(vault kv get -field=token secrets/databricks/sandbox)"
+    - cd deploy/account/sandbox
+    - terraform init
+    - terraform plan
+  tags:
+    - sandbox
+    - us-east-1
+    - docker-readonly
+
+deploy1_sandbox:
+  stage: deploy
+  script:
+    - export VAULT_ADDR=https://vault.us-east-1.management.directsupply-sandbox.cloud
+    - vault login -method=aws role=deployment-bastion
+    - export DATABRICKS_HOST="$(vault kv get -field=host secrets/databricks/sandbox)"
+    - export DATABRICKS_TOKEN="$(vault kv get -field=token secrets/databricks/sandbox)"
+    - cd deploy/account/sandbox
+    - terraform init
+    - terraform apply -auto-approve
+  when: manual
+  tags:
+    - sandbox
+    - us-east-1
+    - docker
+plan1_destroy1_sandbox:
+  stage: plan_destroy
+  script:
+    - export VAULT_ADDR=https://vault.us-east-1.management.directsupply-sandbox.cloud
+    - vault login -method=aws role=deployment-bastion-read-east
+    - export DATABRICKS_HOST="$(vault kv get -field=host secrets/databricks/sandbox)"
+    - export DATABRICKS_TOKEN="$(vault kv get -field=token secrets/databricks/sandbox)"
+    - cd deploy/account/sandbox
+    - terraform init
+    - terraform plan --destroy
+  tags:
+    - sandbox
+    - us-east-1
+    - docker-readonly
+
+destroy1_sandbox:
+  stage: destroy
+  script:
+    - export VAULT_ADDR=https://vault.us-east-1.management.directsupply-sandbox.cloud
+    - vault login -method=aws role=deployment-bastion
+    - export DATABRICKS_HOST="$(vault kv get -field=host secrets/databricks/sandbox)"
+    - export DATABRICKS_TOKEN="$(vault kv get -field=token secrets/databricks/sandbox)"
+    - cd deploy/account/sandbox
+    - terraform init
+    - terraform apply -destroy -auto-approve
+  when: manual
+  tags:
+    - sandbox
+    - us-east-1
+    - docker
