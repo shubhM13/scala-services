@@ -1,0 +1,41 @@
+image:
+  name: hashicorp/terraform:1.0.4
+  entrypoint: [""]
+before_script:
+  - chmod +x runner_setup.sh
+  - sh runner_setup.sh
+
+stages:
+  - build
+  - deploy-sandbox
+
+scala-build-sandbox:
+  stage: build
+  script:
+    - apk update
+    - apk add openjdk8
+    - apk add maven
+    - export PATH=${PATH}:${JAVA_HOME}/bin
+    - mvn package -DskipTests=false
+  tags:
+    - sandbox
+    - us-east-1
+    - docker-readonly
+
+deploy-sandbox:
+  stage: deploy-sandbox
+  when: manual
+  script:
+    - apk update
+    - apk add openjdk8
+    - apk add maven
+    - export PATH=${PATH}:${JAVA_HOME}/bin
+    - mvn package -DskipTests=true
+    - apk add py-pip
+    - pip install awscli boto3
+    - cd target/
+    - aws s3 cp LoadIncrementalData-1.0-SNAPSHOT.jar s3://ds-data-databricks-sandbox/artifacts/LoadIncrementalData.jar
+  tags:
+    - sandbox
+    - us-east-1
+    - docker
